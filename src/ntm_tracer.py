@@ -1,4 +1,4 @@
-from src.helpers.turing_machine import TuringMachineSimulator, DIR_R
+from src.helpers.turing_machine import TuringMachineSimulator, DIR_R, DIR_L, DIR_S, BLANK
 
 
 # ==========================================
@@ -14,7 +14,7 @@ class NTM_Tracer(TuringMachineSimulator):
 
         # Initial Configuration: ["", start_state, input_string]
         # Note: Represent configuration as triples (left, state, right) [cite: 156]
-        right = input_string if input_string  else BLANK
+        right = input_string if input_string else BLANK
         initial_config = ["", self.start_state, right, None, None]
 
         # The tree is a list of lists of configurations
@@ -40,19 +40,23 @@ class NTM_Tracer(TuringMachineSimulator):
             # 5. If no explicit transition exists, treat as implicit Reject.
             # 6. Generate children configurations and append to next_level[cite: 148].
 
+            # loop through every configuration
             for idx, config in enumerate(current_level):
                 left, state, right = config[0], config[1], config[2]
 
-                if state = self.accept_state:
+                # check for accept
+                if state == self.accept_state:
                     accepted = True
                     accept_node = (depth, idx)
                     break
 
+                # if rejected, only skip this iteration
                 if state == self.reject_state:
                     continue
 
                 all_rejected = False # there's at least one non-reject state
 
+                # read next symbol, if there's nothing left it's blank
                 if right:
                     read_symbol = right[0]
                     rest_right = right[1:]
@@ -60,18 +64,21 @@ class NTM_Tracer(TuringMachineSimulator):
                     read_symbol = BLANK
                     rest_right = ""
 
+                # find all nondeterministic transitions for state, symbol
                 transitions = self.get_transitions(state, (read_symbol,))
 
+                # no valid transitions, so we move to reject
                 if not transitions:
                     total_transitions += 1
                     child = [left, self.reject_state, right, depth, idx]
                     next_level.append(child)
                     continue
 
+                # for every nondeterministic transition, make a child configuration with the parent's id
                 for t in transitions:
                     next_state = t["next"]
                     write_symbol = t["write"][0]
-                    direction = t["direction"][0]
+                    direction = t["move"][0]
 
                     total_transitions += 1
 
@@ -99,29 +106,31 @@ class NTM_Tracer(TuringMachineSimulator):
                     else:
                         new_left = left
                         new_right = write_symbol + rest_right
-
+                    # store parent idx for reconstruction later
                     child = [new_left, next_state, new_right, depth, idx]
                     next_level.append(child)
 
+            if accepted:
+                break
 
-            # Placeholder for logic:
-            if not next_level and all_rejected:
+            # if there's no more configuration to look at -> reject
+            if not next_level:
                 rejected = True
                 break
 
-            if accepted:
-                break
 
             tree.append(next_level)
             depth += 1
 
         tree_depth = depth
 
+        # print final output
         print(f"Machine name: {self.machine_name}")
         print(f"Initial String: {input_string}")
         print(f"Tree Depth: {tree_depth}")
         print(f"Total transitions simulated: {total_transitions}")
 
+        # follow formatting labeled in project document
         if accepted and accept_node is not None:
             print(f"String accepted in {accept_node[0]} transitions.")
             self.print_trace_path(accept_node)
@@ -135,21 +144,24 @@ class NTM_Tracer(TuringMachineSimulator):
         Backtrack and print the path from root to the accepting node.
         Ref: Section 4.2 [cite: 165]
         """
+        # we want to start from the accepting final configuration
         level, index = final_node
         path = []
 
+
         while level is not None and index is not None:
-            config = self.tree[level][index]
+            config = self.tree[level][index] # get config
             path.append(config)
-            parent_level = config[3]
+            parent_level = config[3] # get the parents info to backtrack
             parent_index = config[4]
             level, index = parent_level, parent_index
 
-        path.reverse()
+        path.reverse() # reverse because we went from bottom->top
+
 
         for config in path:
             left, state, right = config[0], config[1], config[2]
-
+            # if right is not empty, the head is the first symbol of 'right'
             if right:
                 head_char = right[0]
                 rest_right = right[1:]
@@ -157,5 +169,6 @@ class NTM_Tracer(TuringMachineSimulator):
                 head_char = BLANK
                 rest_right = ""
 
-            print(f"{left, {state}, {head_char}, {rest_right}}")
+            # follow exact formatting
+            print(f"{left}, {state}, {head_char}, {rest_right}")
 
