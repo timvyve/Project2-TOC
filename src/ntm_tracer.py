@@ -26,6 +26,8 @@ class NTM_Tracer(TuringMachineSimulator):
         rejected = False
         accept_node = None
         total_transitions = 0
+        expanded_configs = 0
+        generated_children = 0
 
         while depth < max_depth and not accepted:
             current_level = tree[-1]
@@ -54,6 +56,8 @@ class NTM_Tracer(TuringMachineSimulator):
                 if state == self.reject_state:
                     continue
 
+                expanded_configs += 1
+
                 all_rejected = False # there's at least one non-reject state
 
                 # read next symbol, if there's nothing left it's blank
@@ -72,6 +76,7 @@ class NTM_Tracer(TuringMachineSimulator):
                     total_transitions += 1
                     child = [left, self.reject_state, right, depth, idx]
                     next_level.append(child)
+                    generated_children += 1
                     continue
 
                 # for every nondeterministic transition, make a child configuration with the parent's id
@@ -109,6 +114,7 @@ class NTM_Tracer(TuringMachineSimulator):
                     # store parent idx for reconstruction later
                     child = [new_left, next_state, new_right, depth, idx]
                     next_level.append(child)
+                    generated_children += 1
 
             if accepted:
                 break
@@ -124,11 +130,17 @@ class NTM_Tracer(TuringMachineSimulator):
 
         tree_depth = depth
 
+        if expanded_configs > 0:
+            degree = generated_children / expanded_configs
+        else:
+            degree = 0.0
+
         # print final output
         print(f"Machine name: {self.machine_name}")
         print(f"Initial String: {input_string}")
         print(f"Tree Depth: {tree_depth}")
         print(f"Total transitions simulated: {total_transitions}")
+        print(f"Degree of nondeterminism: {degree:.2f}")
 
         # follow formatting labeled in project document
         if accepted and accept_node is not None:
